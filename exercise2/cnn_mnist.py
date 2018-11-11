@@ -7,7 +7,7 @@ import os
 import pickle
 
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 def one_hot(labels):
     """this creates a one hot encoding from a flat vector:
@@ -57,6 +57,9 @@ def mnist(datasets_dir='./data'):
     train_x = train_x.astype('float32').reshape(train_x.shape[0], 28, 28, 1)
     train_y = train_y.astype('int32')
     print('... done loading data')
+    plt.gray()
+    plt.imshow(train_x)
+
     return train_x, one_hot(train_y), valid_x, one_hot(valid_y), test_x, one_hot(test_y)
 
 
