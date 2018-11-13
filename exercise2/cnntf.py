@@ -2,22 +2,20 @@
 ### Email  : basharat.basharat@uranus.uni-freiburg.de
 
 from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
 
 import tensorflow as tf
 import numpy as np
 
-class Cnn_Tensorflow():
+class CnnTensorflow():
 
-	def cnn_tensorflow(features, labels, mode):
+	def model(features, labels, mode):
 		
 		inputlayer = tf.reshape(features["x"], [-1, 28, 28, 1])
 
 		conv1 = tf.layers.conv2d (
 					inputs = inputlayer,
 					filters = 16,
-					kernel_size = 3,
+					kernel_size = 5,
 					padding = "same",
 					activation = tf.nn.relu)
 		
@@ -28,7 +26,7 @@ class Cnn_Tensorflow():
 		conv2 = tf.layers.conv2d (
 					inputs = pool1, 
 					filters = 16,
-					kernel_size = 3,
+					kernel_size = 5,
 					padding = "same",
 					activation = tf.nn.relu)
 		print ("Conv2 shape : ", conv2.shape)
@@ -46,7 +44,7 @@ class Cnn_Tensorflow():
 				inputs=dense, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
 		print ("Dropout shape : ", dropout.shape)
 
-		logits = tf.layers.dense(inputs=dense, units=128)
+		logits = tf.layers.dense(inputs=dense, units=10)
 		print ("Logits shape : ", logits.shape)
 		
 		predictions = {
@@ -65,7 +63,7 @@ class Cnn_Tensorflow():
 
 		# Configure the Training Op (for TRAIN mode)
 		if mode == tf.estimator.ModeKeys.TRAIN:
-			optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.01)
+			optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
 			train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
 			return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
