@@ -27,6 +27,8 @@ def rgb2gray(rgb):
     return gray.astype('float32') 
 
 
+
+
 def action_to_id(a):
     """ 
     this method discretizes the actions.

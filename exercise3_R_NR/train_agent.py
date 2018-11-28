@@ -6,9 +6,14 @@ import os
 import gzip
 import matplotlib.pyplot as plt
 
-from model import Model
+from kmodel import Model
+import tensorflow as tf
 from utils import *
 from tensorboard_evaluation import Evaluation
+
+
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 
 def read_data(datasets_dir="./data", frac = 0.1):
     """
@@ -43,11 +48,19 @@ def preprocessing(X_train, y_train, X_valid, y_valid, history_length=1):
     # History:
     # At first you should only use the current image as input to your network to learn the next action. Then the input states
     # have shape (96, 96,1). Later, add a history of the last N images to your state so that a state has shape (96, 96, N).
-    
+
+    X_train = rgb2gray(X_train)
+    X_train = np.expand_dims(X_train, axis=3)
+    X_valid = rgb2gray(X_valid)
+    X_valid = np.expand_dims(X_valid, axis=3)
+    ##y_valid = rgb2gray(y_valid)
+
+
+
     return X_train, y_train, X_valid, y_valid
 
 
-def train_model(X_train, y_train, X_valid, n_minibatches, batch_size, lr, model_dir="./models", tensorboard_dir="./tensorboard"):
+def train_model(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, lr, model_dir="./models", tensorboard_dir="./tensorboard"):
     
     # create result and model folders
     if not os.path.exists(model_dir):
@@ -57,9 +70,11 @@ def train_model(X_train, y_train, X_valid, n_minibatches, batch_size, lr, model_
 
 
     # TODO: specify your neural network in model.py 
-    # agent = Model(...)
+    agent = Model(32, 16, history_length=1)
+    training_loss = agent.train_valid(X_train, y_train, X_valid, y_valid, n_minibatches, batch_size, lr)
     
     tensorboard_eval = Evaluation(tensorboard_dir)
+
 
     # TODO: implement the training
     # 
@@ -85,6 +100,18 @@ if __name__ == "__main__":
     # preprocess data
     X_train, y_train, X_valid, y_valid = preprocessing(X_train, y_train, X_valid, y_valid, history_length=1)
 
+    #print (X_train)
+    #print (X_train.shape)
     # train model (you can change the parameters!)
-    train_model(X_train, y_train, X_valid, n_minibatches=100000, batch_size=64, lr=0.0001)
- 
+    
+    #print (X_train[2625])
+
+    ##for i in range(2615,2640):
+    ##    print (y_train[i])
+    ##    plt.imshow(X_train[i], cmap='gray')
+    ##    plt.show()
+
+    
+    ##train_model(X_train, y_train, X_valid, n_minibatches=100000, batch_size=64, lr=0.0001)
+    train_model(X_train, y_train, X_valid, y_valid, 5, batch_size=64, lr=0.01)
+    print ("y_train shape ::: ", y_train.shape)
