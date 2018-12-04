@@ -35,6 +35,8 @@ def cnn_model (features, labels, mode, params):
 
 	inputlayer = tf.reshape(features["x"], [-1, 96, 96, 1])
 
+	##print ("inputlayer shape :: ", inputlayer.shape)
+	##print ("labels shape :: ", labels.shape)
 	##conv1 = tf.layers.conv2d (inputs = inputlayer, filters = 32, kernel_size = 5, padding = "valid", activation = tf.nn.relu)
 	##print ("Conv1 shape : ", conv1.shape)
 	##pool1 = tf.layers.max_pooling2d(inputs = conv1, pool_size=2, strides=2)
@@ -60,11 +62,13 @@ def cnn_model (features, labels, mode, params):
 	conv1 = tf.layers.conv2d (inputs = inputlayer, filters = 16, kernel_size = 5, strides=2, padding = "valid", activation = tf.nn.relu)
 	conv2 = tf.layers.conv2d (inputs = conv1, filters = 32, kernel_size = 5, strides=2, padding = "valid", activation = tf.nn.relu)
 	conv3 = tf.layers.conv2d (inputs = conv2, filters = 32, kernel_size = 3, strides=1, padding = "valid", activation = tf.nn.relu)
-	
-	print ("Conv3 shape : ", conv3.shape)
 	conv3_flat = tf.reshape(conv3, [-1, 19*19*32])
-	dense1 = tf.layers.dense(inputs=conv3_flat, units=128, activation=tf.nn.relu)
+	dense1 = tf.layers.dense(inputs=conv3_flat, units=256, activation=tf.nn.relu)
+	dropout = tf.layers.dropout(inputs=dense1, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
+
+	
 	logits = tf.layers.dense(inputs=dense1, units=4, activation=None)
+	#print ("Logits shape : ", logits.shape)
 	 
 
 	# LSTM layer
@@ -72,8 +76,8 @@ def cnn_model (features, labels, mode, params):
 	##a_lstm = tf.nn.rnn_cell.DropoutWrapper(a_lstm, output_keep_prob=0.8)
 	##a_lstm = tf.nn.rnn_cell.MultiRNNCell(cells=[a_lstm])
 
-	##a_init_state = a_lstm.zero_state(batch_size=16, dtype=tf.float32)
-	##lstm_in = tf.expand_dims(self.output1, axis=1)
+	##a_init_state = a_lstm.zero_state(batch_size=32, dtype=tf.float32)
+	##lstm_in = tf.expand_dims(logits, axis=1)
 
 	##a_outputs, a_final_state = tf.nn.dynamic_rnn(cell=a_lstm, inputs=lstm_in, initial_state=a_init_state)
 	##a_cell_out = tf.reshape(a_outputs, [-1, 256], name='flatten_lstm_outputs')
@@ -92,20 +96,28 @@ def cnn_model (features, labels, mode, params):
 	##self.saver = tf.train.Saver()
 	##init = tf.global_variables_initializer()
 	##self.sess.run (init)
-	print('logits shape :: ', logits.shape)
-	
+	#print('logits shape :: ', logits.shape)
+
+	#logits = tf.argmax (logits, axis=-1)
+
 	predictions = {
 		# Generate predictions (for PREDICT and EVAL mode)
 		#"classes": tf.argmax(input=logits),
-		"classes": logits,
+		"actions": logits,
+		#"classes": a_cell_out,
 		# Add `softmax_tensor` to the graph. It is used for PREDICT and by the
 		# `logging_hook`.
 		#"probabilities": tf.nn.softmax(logits, name="softmax_tensor")
 	}
 
+	## for accuracy 
+	##prob = tf.nn.softmax (logits)
+	###prediction = (prob - labels)
+	##accuracy = tf.metrics.accuracy (labels, prob)
+	##print ("Accuracy :", accuracy )
 
 	if mode == tf.estimator.ModeKeys.PREDICT:
-		return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+		return tf.estimator.EstimatorSpec(mode=mode, predictions=logits)
 
 	# Calculate Loss (for both TRAIN and EVAL modes)
 	#loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
@@ -120,12 +132,13 @@ def cnn_model (features, labels, mode, params):
 		train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
 		return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
-	##eval_metric_ops = {
-	##	"accuracy": tf.metrics.accuracy(
-	##		labels=labels, predictions=predictions["classes"])}
 	eval_metric_ops = {
 		"accuracy": tf.metrics.accuracy(
-			labels=labels, predictions=logits)}
+			labels=labels, predictions=predictions["actions"])}
+	##eval_metric_ops = {
+	##	"accuracy": tf.metrics.accuracy(
+	##		labels=labels, predictions=logits)}
+
 		
 	return tf.estimator.EstimatorSpec(
 		mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
@@ -134,7 +147,7 @@ def cnn_model (features, labels, mode, params):
 
 class Model (object):
 
-	def __init__ (self, params, id, model_dir='./model'):
+	def __init__ (self, params, id, model_dir='./models'):
 
 		self.model = tf.estimator.Estimator(model_fn=cnn_model, model_dir="{}/model{}".format(model_dir, id), params=params)
 		#self.model = tf.estimator.Estimator(model_fn=cnn_model, params=params)
@@ -146,7 +159,7 @@ class Model (object):
 
 		print('\nTraining phase initiated...\n')
 
-		model_dir = './model'
+		model_dir = './models'
 		tensorboard_dir = './tensorboard'
 		tensorboard_eval = Evaluation (tensorboard_dir)
 
@@ -154,19 +167,22 @@ class Model (object):
 		total_batch_num = int (X_train.shape[0] // batch_size)
 		total_batch_num_valid = int (X_valid.shape[0] // batch_size)
 
-		print ("total_batch_num  :: ", total_batch_num)
-		print ("batch_size   :: ", batch_size)
+		#print ("total_batch_num  :: ", total_batch_num)
+		#print ("batch_size   :: ", batch_size)
+
+		print ("X_valid shape : ", X_valid.shape)
+		print ("y_valid shape : ", y_valid.shape)
 
 
 		for epoch in range(epochs):
-			print ("epoch:  %i  :: " %epoch)
+			#print ("epoch:  %i  :: " %epoch)
 
 			train_input_fn = tf.estimator.inputs.numpy_input_fn(
 				x = {"x" : X_train },
 				y = y_train, 
 				batch_size = batch_size,
-				num_epochs=1,
-				shuffle=False)
+				num_epochs=epochs,
+				shuffle=True)
 
 			self.model.train(input_fn=train_input_fn, steps=100)
 
@@ -174,7 +190,7 @@ class Model (object):
 				x = {"x" : X_valid },
 				y = y_valid,
 				batch_size = batch_size,
-				num_epochs=1,
+				num_epochs=epochs,
 				shuffle=False)
 
 			stats = self.model.evaluate(eval_input_fn)
@@ -184,7 +200,8 @@ class Model (object):
 	def select_action (self, state):
 
 		predict_input_fn = tf.estimator.inputs.numpy_input_fn(x={"x":state}, shuffle=False)
-		a = list(self.model.predict(predict_input_fn))[0]['classes']
+		#a = list(self.model.predict(predict_input_fn))[0:]
+		a = list(self.model.predict(predict_input_fn))[0]['actions']
 		a[1] = np.round(a[1])
 		a[2] = np.round(a[2] * 3) / 5
 		
