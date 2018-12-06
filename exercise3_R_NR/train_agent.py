@@ -5,7 +5,7 @@ import numpy as np
 import os
 import gzip
 import matplotlib.pyplot as plt
-from smodel import * 
+from model import * 
 import tensorflow as tf
 from utils import *
 from tensorboard_evaluation import Evaluation
